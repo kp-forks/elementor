@@ -17,7 +17,7 @@ class Test_Local extends Elementor_Test_Base {
 	 */
 	private $source;
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 
 		$this->source = $this
@@ -30,7 +30,7 @@ class Test_Local extends Elementor_Test_Base {
 		// Arrange - fake globals.
 		global $post_type, $wp_list_table;
 
-		$wp_list_table = _get_list_table( 'WP_Posts_List_Table' , array( 'screen' => 'edit-page' ) );
+		$wp_list_table = _get_list_table( 'WP_Posts_List_Table' , [ 'screen' => 'edit-page' ] );
 		$post_type = 'post';
 
 		// Act.
@@ -42,7 +42,7 @@ class Test_Local extends Elementor_Test_Base {
 		$output = ob_get_clean();
 
 		// Assert
-		$this->assertContains( 'elementor-template-library-add-new', $output );
+		$this->assertStringContainsString( 'elementor-template-library-add-new', $output );
 
 		// Clean - globals.
 		$post_type = null;

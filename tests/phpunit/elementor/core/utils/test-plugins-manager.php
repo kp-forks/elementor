@@ -32,7 +32,7 @@ class Test_Plugins_Manager extends Elementor_Test_Base {
 	 */
 	private $plugin_upgrader_mock;
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 
 		$this->original_wp_api = Plugin::$instance->wp;
@@ -49,7 +49,7 @@ class Test_Plugins_Manager extends Elementor_Test_Base {
 
 	}
 
-	public function tearDown() {
+	public function tearDown(): void {
 		parent::tearDown();
 
 		Plugin::$instance->wp = $this->original_wp_api;
@@ -261,7 +261,7 @@ class Test_Plugins_Manager extends Elementor_Test_Base {
 			'plugin_information',
 			[
 				'slug' => $slug,
-				'fields' => array(
+				'fields' => [
 					'short_description' => false,
 					'sections' => false,
 					'requires' => false,
@@ -274,7 +274,7 @@ class Test_Plugins_Manager extends Elementor_Test_Base {
 					'compatibility' => false,
 					'homepage' => false,
 					'donate_link' => false,
-				),
+				],
 			]
 		];
 	}

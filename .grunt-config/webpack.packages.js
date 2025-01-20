@@ -1,10 +1,12 @@
 const path = require( 'path' );
 const fs = require( 'fs' );
 const { GenerateWordPressAssetFileWebpackPlugin } = require( '@elementor/generate-wordpress-asset-file-webpack-plugin' );
-const { ExtractI18nWordpressExpressionsWebpackPlugin } = require( '@elementor/extract-i18n-wordpress-experssions-webpack-plugin' );
+const { ExtractI18nWordpressExpressionsWebpackPlugin } = require( '@elementor/extract-i18n-wordpress-expressions-webpack-plugin' );
 const { ExternalizeWordPressAssetsWebpackPlugin } = require( '@elementor/externalize-wordpress-assets-webpack-plugin' );
 
-const packages = process.env.ELEMENTOR_PACKAGES_USE_LOCAL ? getLocalRepoPackagesEntries() : getNodeModulesPackagesEntries()
+const usingLocalRepo = process.env.ELEMENTOR_PACKAGES_USE_LOCAL;
+
+const packages = usingLocalRepo ? getLocalRepoPackagesEntries() : getNodeModulesPackagesEntries();
 
 const common = {
 	name: 'packages',
@@ -35,6 +37,7 @@ const common = {
 		new GenerateWordPressAssetFileWebpackPlugin( {
 			handle: ( entryName ) => `elementor-v2-${entryName}`,
 			map: [
+				{ request: /^@elementor\/(ui|icons)(\/.+)?$/, handle: 'elementor-v2-$1' },
 				{ request: /^@elementor\/(.+)$/, handle: 'elementor-v2-$1' },
 				{ request: /^@wordpress\/(.+)$/, handle: 'wp-$1' },
 				{ request: 'react', handle: 'react' },
@@ -44,6 +47,7 @@ const common = {
 		new ExternalizeWordPressAssetsWebpackPlugin( {
 			global: ( entryName ) => [ 'elementorV2', entryName ],
 			map: [
+				{ request: /^@elementor\/(ui|icons)\/(.+)$/, global: [ 'elementorV2', '$1', '$2' ] },
 				{ request: /^@elementor\/(.+)$/, global: [ 'elementorV2', '$1' ] },
 				{ request: /^@wordpress\/(.+)$/, global: [ 'wp', '$1' ] },
 				{ request: 'react', global: 'React' },
@@ -59,8 +63,13 @@ const common = {
 const devConfig = {
 	...common,
 	mode: 'development',
-	devtool: false, // TODO: Need to check what to do with source maps.
+	devtool: usingLocalRepo ? 'source-map' : false,
 	watch: true, // All the webpack config in the plugin that are dev, should have this property.
+	optimization: {
+		...( common.optimization || {} ),
+		// Intentionally minimizing the dev assets to reduce the bundle size.
+		minimize: true,
+	},
 	output: {
 		...( common.output || {} ),
 		filename: '[name]/[name].js',
@@ -77,7 +86,9 @@ const prodConfig = {
 	},
 	plugins: [
 		...( common.plugins || [] ),
-		new ExtractI18nWordpressExpressionsWebpackPlugin(),
+		new ExtractI18nWordpressExpressionsWebpackPlugin( {
+			pattern: ( entryPath ) => path.resolve( entryPath, '../../src/**/*.{ts,tsx,js,jsx}' ),
+		} ),
 	],
 	output: {
 		...( common.output || {} ),
@@ -130,11 +141,17 @@ function getLocalRepoPackagesEntries() {
 				name,
 				path: path.resolve( repoPath, dir, `${name}/src/index.ts` ),
 			} ) )
+			.filter( ( { path } ) => fs.existsSync( path ) )
 	);
 
 	packages.push( {
 		name: 'ui',
 		path: './node_modules/@elementor/ui/index.js'
+	} );
+
+	packages.push( {
+		name: 'icons',
+		path: './node_modules/@elementor/icons/index.js'
 	} );
 
 	return packages;

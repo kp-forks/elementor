@@ -9,7 +9,7 @@ use Elementor\Core\Common\Modules\Ajax\Module as Ajax;
 use Elementor\Utils;
 
 if ( ! defined( 'ABSPATH' ) ) {
-	exit; // Exit if accessed directly
+	exit; // Exit if accessed directly.
 }
 
 class Module extends \Elementor\Core\Base\Module {
@@ -65,7 +65,7 @@ class Module extends \Elementor\Core\Base\Module {
 	}
 
 	/**
-	 * @throws \Exception
+	 * @throws \Exception Access Denied.
 	 */
 	public function ajax_enable_safe_mode( $data ) {
 		if ( ! current_user_can( 'install_plugins' ) ) {
@@ -334,7 +334,7 @@ class Module extends \Elementor\Core\Base\Module {
 									}
 								},
 								error: function() {
-									alert( 'An error occurred' );
+									alert( 'An error occurred.' );
 								},
 							},
 							true
@@ -408,7 +408,7 @@ class Module extends \Elementor\Core\Base\Module {
 									location.assign( url );
 								},
 								error: function() {
-									alert( 'An error occurred' );
+									alert( 'An error occurred.' );
 								},
 							},
 							true

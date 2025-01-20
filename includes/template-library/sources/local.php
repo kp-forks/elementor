@@ -14,6 +14,7 @@ use Elementor\Includes\TemplateLibrary\Sources\AdminMenuItems\Templates_Categori
 use Elementor\Modules\Library\Documents\Library_Document;
 use Elementor\Plugin;
 use Elementor\Utils;
+use Elementor\User;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
@@ -222,27 +223,19 @@ class Source_Local extends Source_Base {
 	 * @access public
 	 */
 	public function register_data() {
-		$admin_menu_rearrangement_active = Plugin::$instance->experiments->is_feature_active( 'admin_menu_rearrangement' );
-
-		if ( $admin_menu_rearrangement_active ) {
-			$name = esc_html_x( 'Templates', 'Template Library', 'elementor' );
-		} else {
-			$name = esc_html_x( 'My Templates', 'Template Library', 'elementor' );
-		}
-
 		$labels = [
-			'name' => $name,
+			'name' => esc_html_x( 'My Templates', 'Template Library', 'elementor' ),
 			'singular_name' => esc_html_x( 'Template', 'Template Library', 'elementor' ),
-			'add_new' => esc_html_x( 'Add New', 'Template Library', 'elementor' ),
-			'add_new_item' => esc_html_x( 'Add New Template', 'Template Library', 'elementor' ),
-			'edit_item' => esc_html_x( 'Edit Template', 'Template Library', 'elementor' ),
-			'new_item' => esc_html_x( 'New Template', 'Template Library', 'elementor' ),
-			'all_items' => esc_html_x( 'All Templates', 'Template Library', 'elementor' ),
-			'view_item' => esc_html_x( 'View Template', 'Template Library', 'elementor' ),
-			'search_items' => esc_html_x( 'Search Template', 'Template Library', 'elementor' ),
-			'not_found' => esc_html_x( 'No Templates found', 'Template Library', 'elementor' ),
-			'not_found_in_trash' => esc_html_x( 'No Templates found in Trash', 'Template Library', 'elementor' ),
-			'parent_item_colon' => '',
+			'add_new' => esc_html__( 'Add New Template', 'elementor' ),
+			'add_new_item' => esc_html__( 'Add New Template', 'elementor' ),
+			'edit_item' => esc_html__( 'Edit Template', 'elementor' ),
+			'new_item' => esc_html__( 'New Template', 'elementor' ),
+			'all_items' => esc_html__( 'All Templates', 'elementor' ),
+			'view_item' => esc_html__( 'View Template', 'elementor' ),
+			'search_items' => esc_html__( 'Search Template', 'elementor' ),
+			'not_found' => esc_html__( 'No Templates found', 'elementor' ),
+			'not_found_in_trash' => esc_html__( 'No Templates found in Trash', 'elementor' ),
+			'parent_item_colon' => esc_html__( 'Parent Template:', 'elementor' ),
 			'menu_name' => esc_html_x( 'Templates', 'Template Library', 'elementor' ),
 		];
 
@@ -252,13 +245,16 @@ class Source_Local extends Source_Base {
 			'rewrite' => false,
 			'menu_icon' => 'dashicons-admin-page',
 			'show_ui' => true,
-			'show_in_menu' => ! $admin_menu_rearrangement_active,
+			'show_in_menu' => true,
 			'show_in_nav_menus' => false,
 			'exclude_from_search' => true,
 			'capability_type' => 'post',
 			'hierarchical' => false,
-			'supports' => [ 'title', 'thumbnail', 'author', 'elementor' ],
+			'supports' => [ 'title', 'thumbnail', 'author', 'elementor', 'custom-fields' ],
+			'show_in_rest' => true,
 		];
+
+		$this->avoid_rest_access_for_non_admins();
 
 		/**
 		 * Register template library post type args.
@@ -585,10 +581,16 @@ class Source_Local extends Source_Base {
 			return false;
 		}
 
-		return in_array( static::CPT, $cpt, true );
+		$is_valid_template_type = in_array( static::CPT, $cpt, true );
+
+		return apply_filters(
+			'elementor/template_library/sources/local/is_valid_template_type',
+			$is_valid_template_type,
+			$cpt,
+		);
 	}
 
-	// For testing purposes only, in order to be able to mock the `WP_CLI` constant.
+	/** For testing purposes only, in order to be able to mock the `WP_CLI` constant. */
 	protected function is_wp_cli() {
 		return Utils::is_wp_cli();
 	}
@@ -874,8 +876,8 @@ class Source_Local extends Source_Base {
 	 * @since 1.0.0
 	 * @access public
 	 *
-	 * @param string $name - The file name
-	 * @param string $path - The file path
+	 * @param string $name - The file name.
+	 * @param string $path - The file path.
 	 * @return \WP_Error|array An array of items on success, 'WP_Error' on failure.
 	 */
 	public function import_template( $name, $path ) {
@@ -966,7 +968,7 @@ class Source_Local extends Source_Base {
 	 * @access public
 	 */
 	public function admin_import_template_form() {
-		if ( ! self::is_base_templates_screen() ) {
+		if ( ! self::is_base_templates_screen() || ! User::is_current_user_can_upload_json() ) {
 			return;
 		}
 
@@ -1012,7 +1014,7 @@ class Source_Local extends Source_Base {
 	/**
 	 * Is template library supports export.
 	 *
-	 * whether the template library supports export.
+	 * Whether the template library supports export.
 	 *
 	 * Template saved by the user locally on his site, support export by default
 	 * but this can be changed using a filter.
@@ -1273,7 +1275,7 @@ class Source_Local extends Source_Base {
 	 * @access public
 	 *
 	 * @param string $which The location of the extra table nav markup: 'top' or 'bottom'.
-	 * @param array $args
+	 * @param array  $args
 	 */
 	public function maybe_render_blank_state( $which, array $args = [] ) {
 		global $post_type;
@@ -1356,9 +1358,9 @@ class Source_Local extends Source_Base {
 	 * @since 3.1.0
 	 * @access public
 	 *
-	 * @param string $current_type_label The Entity title
-	 * @param string $href The URL for the 'Add New' button
-	 * @param string $description The sub title describing the Entity (Post Type, Taxonomy, etc.)
+	 * @param string $current_type_label The Entity title.
+	 * @param string $href The URL for the 'Add New' button.
+	 * @param string $description The sub title describing the Entity (Post Type, Taxonomy, etc.).
 	 */
 	public function print_blank_state_template( $current_type_label, $href, $description ) {
 		?>
@@ -1396,7 +1398,7 @@ class Source_Local extends Source_Base {
 		}
 
 		$all_items = get_taxonomy( self::TAXONOMY_CATEGORY_SLUG )->labels->all_items;
-		$dropdown_options = array(
+		$dropdown_options = [
 			'show_option_all' => $all_items,
 			'show_option_none' => $all_items,
 			'hide_empty' => 0,
@@ -1408,10 +1410,9 @@ class Source_Local extends Source_Base {
 			'name' => self::TAXONOMY_CATEGORY_SLUG,
 			//phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Nonce is not required to retrieve the value.
 			'selected' => Utils::get_super_global_value( $_GET, self::TAXONOMY_CATEGORY_SLUG ) ?? '',
-		);
+		];
 
 		printf(
-			/* translators: 1: Taxonomy slug, 2: Label text. */
 			'<label class="screen-reader-text" for="%1$s">%2$s</label>',
 			esc_attr( self::TAXONOMY_CATEGORY_SLUG ),
 			esc_html_x( 'Filter by category', 'Template Library', 'elementor' )
@@ -1746,6 +1747,18 @@ class Source_Local extends Source_Base {
 		unset( $post_types[ self::CPT ] );
 
 		return $post_types;
+	}
+
+	private function avoid_rest_access_for_non_admins(): void {
+		add_filter( 'rest_pre_dispatch', function ( $value, \WP_REST_Server $server, \WP_REST_Request $request ) {
+			if ( strpos( $request->get_route(), self::CPT ) !== false ) {
+				if ( ! current_user_can( 'manage_options' ) ) {
+					return new \WP_Error( 'rest_forbidden', esc_html__( 'Sorry, you are not allowed to do that.', 'elementor' ), [ 'status' => rest_authorization_required_code() ] );
+				}
+			}
+
+			return $value;
+		}, 10, 3 );
 	}
 
 	/**

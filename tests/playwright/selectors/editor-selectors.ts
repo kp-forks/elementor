@@ -1,26 +1,59 @@
 const EditorSelectors = {
-	previewIframe: '#elementor-preview-iframe',
-	container: '[data-element_type="container"]',
-	closeNavigatorBtn: '#elementor-navigator__close',
-	widgetsPanelIcon: '#elementor-panel-header-add-button i',
-	elementsPanelItem: ( title: string ) => `.elementor-panel-category-items :text-is('${ title }')`,
-	searchWidgetLabel: 'Search Widget...',
-	addNewPresetLbl: 'Add New Container',
 	addNewPreset: ( preset: string ) => `[data-preset=${ preset }]`,
-	viewPageBtn: 'View Page',
-	updateBtn: 'Update',
-	menuIcon: '#elementor-panel-header-menu-button i',
+	getWidgetByName: ( title: string ) => `[data-widget_type="${ title }.default"]`,
 	widget: '[data-element_type="widget"]',
-	loadingElement: ( id: string ) => `.elementor-element-${ id }.elementor-loading`,
-	videoIframe: 'iframe.elementor-video',
-	playIcon: '[aria-label="Play"]',
-	mapIframe: 'iframe[src*="https://maps.google.com/maps"]',
-	showSatelliteViewBtn: 'button[title="Show satellite imagery"]',
-	soundCloudIframe: 'iframe[src*="https://w.soundcloud.com/"]',
-	soundWaveForm: 'div.waveform.loaded',
+	container: '[data-element_type="container"]',
 	item: '.elementor-repeater-row-item-title',
-	addNewItem: 'button.elementor-button elementor-repeater-add',
 	plusIcon: '.eicon-plus-circle',
+	siteTitle: '.site-title >> nth=0',
+	pageTitle: '.entry-title >> nth=0',
+	pageHeader: '.page-header',
+	toast: '#elementor-toast',
+	addNewSection: '#elementor-add-new-section',
+	panels: {
+		topBar: {
+			wrapper: '#elementor-editor-wrapper-v2',
+		},
+		menu: {
+			wrapper: '#elementor-panel-page-menu',
+			footerButton: '#elementor-panel-header-menu-button i',
+		},
+		elements: {
+			wrapper: '#elementor-panel-page-elements',
+			footerButton: '#elementor-panel-header-add-button i',
+		},
+		pageSettings: {
+			wrapper: '#elementor-panel-page-settings',
+			footerButton: '#elementor-panel-footer-settings i',
+		},
+		siteSettings: {
+			wrapper: '#elementor-panel-page-menu',
+			saveButton: '//button[text()="Save Changes"]',
+			layout: {
+				breakpoints: {
+					removeBreakpointButton: '#elementor-kit-panel-content .select2-selection__choice__remove',
+				},
+			},
+		},
+		userPreferences: {
+			wrapper: '#elementor-panel-editorPreferences-settings-controls',
+		},
+		footerTools: {
+			wrapper: '#elementor-panel-footer',
+			updateButton: '#elementor-panel-saver-button-publish-label',
+		},
+		navigator: {
+			wrapper: '#elementor-navigator',
+			footer: '#elementor-navigator__footer',
+			closeButton: '#elementor-navigator__close',
+			footerButton: '#elementor-panel-footer-navigator i',
+		},
+		promotionCard: '[data-testid="e-promotion-card"]',
+	},
+	refreshPopup: {
+		reloadButton: '#elementor-save-kit-refresh-page .dialog-button.dialog-ok.dialog-alert-ok',
+	},
+
 	media: {
 		preview: '.elementor-control-media__preview',
 		imageByTitle: ( imageTitle: string ) => `[aria-label="${ imageTitle }"]`,
@@ -31,8 +64,6 @@ const EditorSelectors = {
 		imgCaption: '#attachment-details-caption',
 		imgDescription: '#attachment-details-description',
 	},
-	siteTitle: 'h1.site-title',
-	pageTitle: 'h1.entry-title',
 	button: {
 		getByName: ( name: string ) => `.elementor-button:has-text("${ name }")`,
 		id: '[data-setting="button_css_id"]',
@@ -78,14 +109,16 @@ const EditorSelectors = {
 			return `${ this.widget } img`;
 		},
 	},
+	galleryControl: {
+		addGalleryBtn: 'button.elementor-control-gallery-add',
+	},
 	imageCarousel: {
 		widget: '[data-widget_type="image-carousel.default"]',
 		get link() {
 			return `${ this.widget } a`;
 		},
-		addGalleryBtn: 'button.elementor-control-gallery-add',
 		navigationSelect: '.elementor-control-navigation select',
-		autoplaySelect: 'select[data-setting="autoplay"]',
+		autoplaySelect: 'input[data-setting="autoplay"]',
 		autoplaySpeedLabel: 'Autoplay Speed',
 		autoplaySpeedInp: '[data-setting="autoplay_speed"]',
 		autoplayToggle: '.elementor-switch-handle',
@@ -115,6 +148,7 @@ const EditorSelectors = {
 		loopInp: 'input[data-setting="loop"]',
 		playerControlInp: 'input[data-setting="controls"]',
 		modestbrandingInp: 'input[data-setting="modestbranding"]',
+		ccLoadPolicyInp: 'input[data-setting="cc_load_policy"]',
 		privacyInp: 'input[data-setting="yt_privacy"]',
 		switch: '.elementor-switch-handle',
 		suggestedVideoSelect: '[data-setting="rel"]',
@@ -130,6 +164,8 @@ const EditorSelectors = {
 		lightBoxSetting: 'div[data-elementor-open-lightbox="yes"]',
 		lightBoxDialog: '.elementor-lightbox',
 		iframe: 'iframe[class*="elementor-video"]',
+		playIcon: '[aria-label="Play"]',
+		videoWrapper: '.elementor-video-wrapper',
 	},
 	socialIcons: {
 		widget: '[data-widget_type="social-icons.default"]',
@@ -145,7 +181,76 @@ const EditorSelectors = {
 		body: '#tinymce',
 	},
 	googleMaps: {
-		location: '[data-setting="address"]',
+		iframe: 'iframe[src*="https://maps.google.com/maps"]',
+		showSatelliteViewBtn: 'button[title="Show satellite imagery"]',
+	},
+	soundCloud: {
+		iframe: 'iframe[src*="https://w.soundcloud.com/"]',
+		waveForm: 'div.waveform.loaded',
+	},
+	ai: {
+		aiButton: '.e-ai-button',
+		aiDialogCloseButton: '.MuiDialog-container button[aria-label="close"]',
+		promptInput: 'input[name="prompt"]',
+		resultTextarea: 'textarea.MuiInputBase-inputMultiline',
+		image: {
+			promptTextarea: '[data-testid="e-image-prompt"] textarea',
+			typeInput: '#image-type + input',
+			styleInput: '#style + input',
+			aspectRationInput: '#aspect-ratio + input',
+			generatedImage: '[data-testid="e-gallery-image"] img',
+		},
+		promptHistory: {
+			button: 'button[aria-label="Show prompt history"]',
+			modal: '#prompt-history-modal',
+			closeButton: 'button[aria-label="Hide prompt history"]',
+			upgradeMessageFullTestId: 'e-ph-upgrade-full',
+			upgradeMessageSmallTestId: 'e-ph-upgrade-small',
+			noDataMessageTestId: 'e-ph-empty',
+			periodTestId: 'e-ph-p',
+			itemTestId: 'e-ph-i',
+			fallbackIconTestId: 'e-ph-fi',
+			removeButton: 'button[aria-label="Remove item"]',
+			reuseButton: 'button[aria-label="Reuse prompt"]',
+			restoreButton: 'button[aria-label="Restore"]',
+			editButton: 'button[aria-label="Edit result"]',
+		},
+	},
+	floatingElements: {
+		floatingButtons: {
+			controls: {
+				advanced: {
+					sections: [
+						'.elementor-control-advanced_layout_section',
+						'.elementor-control-advanced_responsive_section',
+						'.elementor-control-advanced_custom_controls_section',
+						'.elementor-control-section_custom_css_pro',
+						'.elementor-control-section_custom_attributes_pro',
+					],
+				},
+			},
+		},
+	},
+	contextMenu: {
+		menu: '.elementor-context-menu',
+		saveAsGlobal: '.elementor-context-menu-list__item.elementor-context-menu-list__item-save.elementor-context-menu-list__item--disabled',
+		notes: '.elementor-context-menu-list__item.elementor-context-menu-list__item-open_notes.elementor-context-menu-list__item--disabled',
+	},
+	dialog: {
+		lightBox: '.elementor-lightbox',
+	},
+	onboarding: {
+		upgradeButton: '.e-onboarding__button-action',
+		skipButton: '.e-onboarding__button-skip',
+		screenTitle: '.e-onboarding__page-content-section-title',
+		progressBar: {
+			skippedItem: '.e-onboarding__progress-bar-item--skipped',
+			completedItem: '.e-onboarding__progress-bar-item--completed',
+		},
+		features: {
+			essential: '#essential',
+			advanced: '#advanced',
+		},
 	},
 };
 

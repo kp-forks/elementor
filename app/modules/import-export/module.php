@@ -14,7 +14,7 @@ use Elementor\Utils as ElementorUtils;
 use Elementor\App\Modules\ImportExport\Utils as ImportExportUtils;
 
 if ( ! defined( 'ABSPATH' ) ) {
-	exit; // Exit if accessed directly
+	exit; // Exit if accessed directly.
 }
 
 /**
@@ -42,6 +42,10 @@ class Module extends BaseModule {
 	const KIT_LIBRARY_ERROR_KEY = 'invalid-kit-library-zip-error';
 
 	const NO_WRITE_PERMISSIONS_KEY = 'no-write-permissions';
+
+	const THIRD_PARTY_ERROR = 'third-party-error';
+
+	const DOMDOCUMENT_MISSING = 'domdocument-missing';
 
 	const OPTION_KEY_ELEMENTOR_IMPORT_SESSIONS = 'elementor_import_sessions';
 
@@ -129,7 +133,7 @@ class Module extends BaseModule {
 		$intro_text_link = sprintf( '<a href="https://go.elementor.com/wp-dash-import-export-general/" target="_blank">%s</a>', esc_html__( 'Learn more', 'elementor' ) );
 
 		$intro_text = sprintf(
-		/* translators: 1: New line break, 2: Learn More link. */
+			/* translators: 1: New line break, 2: Learn more link. */
 			__( 'Design sites faster with a template kit that contains some or all components of a complete site, like templates, content & site settings.%1$sYou can import a kit and apply it to your site, or export the elements from this site to be used anywhere else. %2$s', 'elementor' ),
 			'<br>',
 			$intro_text_link
@@ -331,10 +335,12 @@ class Module extends BaseModule {
 	 */
 	public function import_kit( string $path, array $settings, bool $split_to_chunks = false ): array {
 		$this->ensure_writing_permissions();
+		$this->ensure_DOMDocument_exists();
 
 		$this->import = new Import( $path, $settings );
 		$this->import->register_default_runners();
 
+		remove_filter( 'elementor/document/save/data', [ Plugin::$instance->modules_manager->get_modules( 'content-sanitizer' ), 'sanitize_content' ] );
 		do_action( 'elementor/import-export/import-kit', $this->import );
 
 		if ( $split_to_chunks ) {
@@ -454,6 +460,7 @@ class Module extends BaseModule {
 	 * Prevent the creation of the default WooCommerce pages (Cart, Checkout, etc.)
 	 *
 	 * TODO 18/04/2023 : This needs to be moved to the runner itself after https://elementor.atlassian.net/browse/HTS-434 is done.
+	 *
 	 * @return array
 	 */
 	public function empty_pages(): array {
@@ -473,19 +480,25 @@ class Module extends BaseModule {
 
 		// WP Content dir has to be exists and writable.
 		if ( ! $permissions[ Server::KEY_PATH_WP_CONTENT_DIR ]['write'] ) {
-			throw new \Error( self::NO_WRITE_PERMISSIONS_KEY );
+			throw new \Error( self::NO_WRITE_PERMISSIONS_KEY ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 
 		// WP Uploads dir has to be exists and writable.
 		if ( ! $permissions[ Server::KEY_PATH_UPLOADS_DIR ]['write'] ) {
-			throw new \Error( self::NO_WRITE_PERMISSIONS_KEY );
+			throw new \Error( self::NO_WRITE_PERMISSIONS_KEY ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 
 		// Elementor uploads dir permissions is divided to 2 cases:
 		// 1. If the dir exists, it has to be writable.
 		// 2. If the dir doesn't exist, the parent dir has to be writable (wp uploads dir), so we can create it.
 		if ( $permissions[ Server::KEY_PATH_ELEMENTOR_UPLOADS_DIR ]['exists'] && ! $permissions[ Server::KEY_PATH_ELEMENTOR_UPLOADS_DIR ]['write'] ) {
-			throw new \Error( self::NO_WRITE_PERMISSIONS_KEY );
+			throw new \Error( self::NO_WRITE_PERMISSIONS_KEY ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+		}
+	}
+
+	private function ensure_DOMDocument_exists() {
+		if ( ! class_exists( 'DOMDocument' ) ) {
+			throw new \Error( self::DOMDOCUMENT_MISSING ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 	}
 
@@ -549,6 +562,11 @@ class Module extends BaseModule {
 					'trace' => $e->getTraceAsString(),
 				],
 			] );
+
+			if ( isset( $this->import ) && $this->is_third_party_class( $e->getTrace()[0]['class'] ) ) {
+				wp_send_json_error( self::THIRD_PARTY_ERROR, 500 );
+			}
+
 			wp_send_json_error( $e->getMessage(), 500 );
 		}
 	}
@@ -572,19 +590,19 @@ class Module extends BaseModule {
 			}
 
 			if ( ! filter_var( $file_url, FILTER_VALIDATE_URL ) || 0 !== strpos( $file_url, 'http' ) ) {
-				throw new \Error( static::KIT_LIBRARY_ERROR_KEY );
+				throw new \Error( static::KIT_LIBRARY_ERROR_KEY ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			}
 
-			$remote_zip_request = wp_remote_get( $file_url );
+			$remote_zip_request = wp_safe_remote_get( $file_url );
 
 			if ( is_wp_error( $remote_zip_request ) ) {
 				Plugin::$instance->logger->get_logger()->error( $remote_zip_request->get_error_message() );
-				throw new \Error( static::KIT_LIBRARY_ERROR_KEY );
+				throw new \Error( static::KIT_LIBRARY_ERROR_KEY ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			}
 
 			if ( 200 !== $remote_zip_request['response']['code'] ) {
 				Plugin::$instance->logger->get_logger()->error( $remote_zip_request['response']['message'] );
-				throw new \Error( static::KIT_LIBRARY_ERROR_KEY );
+				throw new \Error( static::KIT_LIBRARY_ERROR_KEY ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			}
 
 			$file_name = Plugin::$instance->uploads_manager->create_temp_file( $remote_zip_request['body'], 'kit.zip' );
@@ -613,7 +631,7 @@ class Module extends BaseModule {
 		}
 
 		if ( isset( $manifest['plugins'] ) && ! current_user_can( 'install_plugins' ) ) {
-			throw new \Error( static::PLUGIN_PERMISSIONS_ERROR_KEY );
+			throw new \Error( static::PLUGIN_PERMISSIONS_ERROR_KEY ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 
 		$result = [
@@ -645,6 +663,12 @@ class Module extends BaseModule {
 		// get_settings_config() added manually because the frontend Ajax request doesn't trigger the get_init_settings().
 		$import['configData'] = $this->get_config_data();
 
+		Plugin::$instance->logger->get_logger()->info(
+			sprintf( 'Selected import runners: %1$s',
+				implode( ', ', $import['runners'] )
+			)
+		);
+
 		wp_send_json_success( $import );
 	}
 
@@ -661,6 +685,17 @@ class Module extends BaseModule {
 
 		// get_settings_config() added manually because the frontend Ajax request doesn't trigger the get_init_settings().
 		$import['configData'] = $this->get_config_data();
+
+		if ( ! empty( $import['status'] ) ) {
+			Plugin::$instance->logger->get_logger()->info(
+				sprintf( 'Import runner completed: %1$s %2$s',
+					$import['runner'],
+					( 'success' === $import['status'] ? '✓' : '✗' )
+				)
+			);
+		}
+
+		do_action( 'elementor/import-export/import-kit/runner/after-run', $import );
 
 		wp_send_json_success( $import );
 	}
@@ -734,8 +769,8 @@ class Module extends BaseModule {
 			$post_type_object = get_post_type_object( $post_type );
 
 			$summary_titles['content'][ $post_type ] = [
-				'single' => $post_type_object->labels->singular_name,
-				'plural' => $post_type_object->label,
+				'single' => $post_type_object->labels->singular_name ?? '',
+				'plural' => $post_type_object->label ?? '',
 			];
 		}
 
@@ -747,14 +782,14 @@ class Module extends BaseModule {
 				// CPT data appears in two arrays:
 				// 1. content object: in order to show the export summary when completed in getLabel function
 				$summary_titles['content'][ $custom_post_type ] = [
-					'single' => $custom_post_types_object->labels->singular_name,
-					'plural' => $custom_post_types_object->label,
+					'single' => $custom_post_types_object->labels->singular_name ?? '',
+					'plural' => $custom_post_types_object->label ?? '',
 				];
 
 				// 2. customPostTypes object: in order to actually export the data
 				$summary_titles['content']['customPostTypes'][ $custom_post_type ] = [
-					'single' => $custom_post_types_object->labels->singular_name,
-					'plural' => $custom_post_types_object->label,
+					'single' => $custom_post_types_object->labels->singular_name ?? '',
+					'plural' => $custom_post_types_object->label ?? '',
 				];
 			}
 		}
@@ -774,9 +809,9 @@ class Module extends BaseModule {
 		}
 
 		// TODO: BC - remove in the future
-		//  The 'templates' runner was in core and moved to the Pro plugin. (Part of it still exits in the Core for BC)
-		//  The runner that is in the core version is missing the revert functionality,
-		//  therefore we shouldn't display the revert section if the import process done with the core version.
+		// The 'templates' runner was in core and moved to the Pro plugin. (Part of it still exits in the Core for BC)
+		// The runner that is in the core version is missing the revert functionality,
+		// therefore we shouldn't display the revert section if the import process done with the core version.
 		$is_import_templates_ran = isset( $last_imported_kit['runners']['templates'] );
 		if ( $this->has_pro() && $is_import_templates_ran ) {
 			$has_imported_templates = ! empty( $last_imported_kit['runners']['templates'] );
@@ -851,5 +886,27 @@ class Module extends BaseModule {
 		$document = $this->get_elementor_document( $page_id );
 
 		return $document ? $document->get_edit_url() : '';
+	}
+
+	/**
+	 * @param string $class
+	 *
+	 * @return bool
+	 */
+	public function is_third_party_class( $class ) {
+		$allowed_classes = [
+			'Elementor\\',
+			'ElementorPro\\',
+			'WP_',
+			'wp_',
+		];
+
+		foreach ( $allowed_classes as $allowed_class ) {
+			if ( str_starts_with( $class, $allowed_class ) ) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 }

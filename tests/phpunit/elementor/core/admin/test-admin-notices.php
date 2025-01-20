@@ -3,6 +3,7 @@ namespace Elementor\Tests\Phpunit\Elementor\Core\Admin;
 
 use Elementor\Core\Admin\Admin_Notices;
 use Elementor\Core\Admin\Notices\Base_Notice;
+use Elementor\User;
 use ElementorEditorTesting\Elementor_Test_Base;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -10,6 +11,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 class Test_Admin_Notices extends Elementor_Test_Base {
+
+	public function setUp(): void {
+		parent::setUp();
+
+		remove_all_actions('admin_notices');
+	}
+
 	public function test_admin_notices() {
 		// Arrange
 		$notice = $this->getMockBuilder( Base_Notice::class )
@@ -32,14 +40,14 @@ class Test_Admin_Notices extends Elementor_Test_Base {
 		// Act
 		ob_start();
 
-		do_action( 'admin_notices' );
+		do_action('admin_notices');
 
 		$result = ob_get_clean();
 
 		// Assert
-		$this->assertRegExp( '/\<h3\>test title\<\/h3\>/', $result );
-		$this->assertRegExp( '/\<p\>test description\<\/p\>/', $result );
-		$this->assertRegExp( '/data-notice_id="test_id"/', $result );
+		$this->assertMatchesRegularExpression( '/\<h3\>test title\<\/h3\>/', $result );
+		$this->assertMatchesRegularExpression( '/\<p\>test description\<\/p\>/', $result );
+		$this->assertMatchesRegularExpression( '/data-notice_id="test_id"/', $result );
 	}
 
 	public function test_admin_notices__should_not_print_if_should_print_returns_false() {
@@ -61,7 +69,7 @@ class Test_Admin_Notices extends Elementor_Test_Base {
 		// Act
 		ob_start();
 
-		do_action( 'admin_notices' );
+		do_action('admin_notices');
 
 		$result = ob_get_clean();
 

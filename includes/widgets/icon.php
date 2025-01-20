@@ -74,6 +74,10 @@ class Widget_Icon extends Widget_Base {
 		return [ 'basic' ];
 	}
 
+	public function has_widget_inner_wrapper(): bool {
+		return ! Plugin::$instance->experiments->is_feature_active( 'e_optimized_markup' );
+	}
+
 	/**
 	 * Get widget keywords.
 	 *
@@ -86,6 +90,10 @@ class Widget_Icon extends Widget_Base {
 	 */
 	public function get_keywords() {
 		return [ 'icon' ];
+	}
+
+	protected function is_dynamic_content(): bool {
+		return false;
 	}
 
 	/**
@@ -138,8 +146,9 @@ class Widget_Icon extends Widget_Base {
 				'label' => esc_html__( 'Shape', 'elementor' ),
 				'type' => Controls_Manager::SELECT,
 				'options' => [
-					'circle' => esc_html__( 'Circle', 'elementor' ),
 					'square' => esc_html__( 'Square', 'elementor' ),
+					'rounded' => esc_html__( 'Rounded', 'elementor' ),
+					'circle' => esc_html__( 'Circle', 'elementor' ),
 				],
 				'default' => 'circle',
 				'condition' => [
@@ -157,6 +166,16 @@ class Widget_Icon extends Widget_Base {
 				'dynamic' => [
 					'active' => true,
 				],
+			]
+		);
+
+		$this->end_controls_section();
+
+		$this->start_controls_section(
+			'section_style_icon',
+			[
+				'label' => esc_html__( 'Icon', 'elementor' ),
+				'tab' => Controls_Manager::TAB_STYLE,
 			]
 		);
 
@@ -183,16 +202,6 @@ class Widget_Icon extends Widget_Base {
 				'selectors' => [
 					'{{WRAPPER}} .elementor-icon-wrapper' => 'text-align: {{VALUE}};',
 				],
-			]
-		);
-
-		$this->end_controls_section();
-
-		$this->start_controls_section(
-			'section_style_icon',
-			[
-				'label' => esc_html__( 'Icon', 'elementor' ),
-				'tab' => Controls_Manager::TAB_STYLE,
 			]
 		);
 
@@ -323,7 +332,7 @@ class Widget_Icon extends Widget_Base {
 					'selected_icon[library]' => 'svg',
 				],
 				'selectors' => [
-					'{{WRAPPER}} .elementor-icon-wrapper svg' => 'width: 100%;',
+					'{{WRAPPER}} .elementor-icon-wrapper svg' => 'width: auto;',
 				],
 			]
 		);
@@ -333,11 +342,19 @@ class Widget_Icon extends Widget_Base {
 			[
 				'label' => esc_html__( 'Padding', 'elementor' ),
 				'type' => Controls_Manager::SLIDER,
+				'size_units' => [ 'px', '%', 'em', 'rem', 'custom' ],
 				'selectors' => [
 					'{{WRAPPER}} .elementor-icon' => 'padding: {{SIZE}}{{UNIT}};',
 				],
 				'range' => [
+					'px' => [
+						'max' => 50,
+					],
 					'em' => [
+						'min' => 0,
+						'max' => 5,
+					],
+					'rem' => [
 						'min' => 0,
 						'max' => 5,
 					],
@@ -413,6 +430,10 @@ class Widget_Icon extends Widget_Base {
 	protected function render() {
 		$settings = $this->get_settings_for_display();
 
+		if ( empty( $settings['selected_icon']['value'] ) ) {
+			return;
+		}
+
 		$this->add_render_attribute( 'wrapper', 'class', 'elementor-icon-wrapper' );
 
 		$this->add_render_attribute( 'icon-wrapper', 'class', 'elementor-icon' );
@@ -465,13 +486,27 @@ class Widget_Icon extends Widget_Base {
 	 */
 	protected function content_template() {
 		?>
-		<# const link = settings.link.url ? 'href="' + settings.link.url + '"' : '',
-				iconHTML = elementor.helpers.renderIcon( view, settings.selected_icon, { 'aria-hidden': true }, 'i' , 'object' ),
-				migrated = elementor.helpers.isIconMigrated( settings, 'selected_icon' ),
-				iconTag = link ? 'a' : 'div';
+		<#
+		if ( '' === settings.selected_icon.value ) {
+			return;
+		}
+
+		if ( settings.link.url ) {
+			view.addRenderAttribute( 'link_url', 'href', elementor.helpers.sanitizeUrl( settings.link.url ) );
+		}
+
+		const iconHTML = elementor.helpers.renderIcon( view, settings.selected_icon, { 'aria-hidden': true }, 'i' , 'object' ),
+			migrated = elementor.helpers.isIconMigrated( settings, 'selected_icon' ),
+			iconTag = settings.link.url ? 'a' : 'div';
+
+		view.addRenderAttribute( 'icon', 'class', 'elementor-icon' );
+
+		if ( '' !== settings.hover_animation ) {
+			view.addRenderAttribute( 'icon', 'class', 'elementor-animation-' + settings.hover_animation );
+		}
 		#>
 		<div class="elementor-icon-wrapper">
-			<{{{ iconTag }}} class="elementor-icon elementor-animation-{{ settings.hover_animation }}" {{{ link }}}>
+			<{{{ iconTag }}} {{{ view.getRenderAttributeString( 'icon' ) }}}  {{{ view.getRenderAttributeString( 'link_url' ) }}}>
 				<# if ( iconHTML && iconHTML.rendered && ( ! settings.icon || migrated ) ) { #>
 					{{{ iconHTML.value }}}
 				<# } else { #>

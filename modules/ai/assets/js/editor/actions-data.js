@@ -1,3 +1,5 @@
+import { __ } from '@wordpress/i18n';
+
 export const textAutocomplete = [
 	__( 'Craft a catchy slogan for', 'elementor' ),
 	__( 'Write a strong section header for', 'elementor' ),
@@ -70,4 +72,20 @@ export const translateLanguages = [
 	{ label: __( 'Thai', 'elementor' ), value: 'th-TH' },
 	{ label: __( 'Turkish', 'elementor' ), value: 'tr-TR' },
 	{ label: __( 'Vietnamese', 'elementor' ), value: 'vi-VN' },
+];
+
+export const motionEffectAutocomplete = [
+	__( 'Create Fade out animation on scroll', 'elementor' ),
+	__( 'Create a Parallax effect on scroll', 'elementor' ),
+	__( 'On scroll, fade in with slight scaling up', 'elementor' ),
+	__( 'Move and tilt opposite to mouse position', 'elementor' ),
+	__( 'Slide in from the left on load', 'elementor' ),
+];
+
+export const hoverEffectAutocomplete = [
+	__( 'Move down on hover', 'elementor' ),
+	__( 'Slightly shift right on hover', 'elementor' ),
+	__( 'Apply a subtle 3D tilt', 'elementor' ),
+	__( 'Rotate gently clockwise on hover', 'elementor' ),
+	__( 'Scale down and move up on hover', 'elementor' ),
 ];

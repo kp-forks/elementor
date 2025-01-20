@@ -20,7 +20,7 @@ export default class Component extends ComponentModalBase {
 	}
 
 	defaultTabs() {
-		return {
+		const tabs = {
 			'templates/blocks': {
 				title: __( 'Blocks', 'elementor' ),
 				getFilter: () => ( {
@@ -43,6 +43,17 @@ export default class Component extends ComponentModalBase {
 				},
 			},
 		};
+
+		if ( elementorCommon.config.experimentalFeatures?.[ 'cloud-library' ] ) {
+			tabs[ 'templates/cloud-library' ] = {
+				title: __( 'Cloud Library', 'elementor' ),
+				filter: {
+					source: 'cloud',
+				},
+			};
+		}
+
+		return tabs;
 	}
 
 	defaultRoutes() {
@@ -140,6 +151,16 @@ export default class Component extends ComponentModalBase {
 
 	// TODO: Move function to 'insert-template' command.
 	insertTemplate( args ) {
+		this.downloadTemplate( args, ( data, callbackParams ) => {
+			$e.run( 'document/elements/import', {
+				model: callbackParams.model,
+				data,
+				options: callbackParams.importOptions,
+			} );
+		} );
+	}
+
+	downloadTemplate( args, callback ) {
 		const autoImportSettings = elementor.config.document.remoteLibrary.autoImportSettings,
 			model = args.model;
 
@@ -174,11 +195,7 @@ export default class Component extends ComponentModalBase {
 
 				this.manager.layout.hideModal();
 
-				$e.run( 'document/elements/import', {
-					model,
-					data,
-					options: importOptions,
-				} );
+				callback( data, { model, importOptions } );
 			},
 			error: ( data ) => {
 				this.manager.showErrorDialog( data );

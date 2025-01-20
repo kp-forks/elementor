@@ -1,4 +1,5 @@
-import { Stack, Box } from '@elementor/ui';
+import { Stack, Box, Skeleton } from '@elementor/ui';
+import PropTypes from 'prop-types';
 
 const SingleImagePreview = ( { children, ...props } ) => (
 	<Box display="flex" { ...props }>
@@ -11,8 +12,8 @@ SingleImagePreview.propTypes = {
 };
 
 const Actions = ( { children, sx = {}, ...props } ) => (
-	<Box display="flex" width="100%" justifyContent="flex-end" alignItems="center" { ...props } sx={ { mb: 4, ...sx } }>
-		<Stack direction="row" spacing={ 3 } justifyContent="flex-end" width="100%">
+	<Box display="flex" width="100%" justifyContent="flex-end" alignItems="center" { ...props } sx={ { mb: 1.5, ...sx } }>
+		<Stack direction="row" spacing={ 2 } justifyContent="flex-end" width="100%">
 			{ children }
 		</Stack>
 	</Box>
@@ -23,15 +24,12 @@ Actions.propTypes = {
 	children: PropTypes.node.isRequired,
 };
 
-const Image = ( { src, alt, style = {}, children } ) => (
+const Image = ( { src, alt, style = {}, isLoading = false, children } ) => (
 	<Box margin="0 auto">
 		{ children }
-
-		<img
-			src={ src }
-			alt={ alt }
-			style={ { maxWidth: '100%', width: 'auto', maxHeight: '100%', ...style } }
-		/>
+		{ isLoading
+			? <Skeleton sx={ { maxWidth: '100%', width: 'auto', maxHeight: '100%', ...style } } animation={ 'wave' } variant={ 'rounded' } />
+			: <img src={ src } alt={ alt } style={ { maxWidth: '100%', width: 'auto', maxHeight: '100%', ...style } } /> }
 	</Box>
 );
 
@@ -40,6 +38,7 @@ Image.propTypes = {
 	children: PropTypes.node,
 	src: PropTypes.string.isRequired,
 	alt: PropTypes.string.isRequired,
+	isLoading: PropTypes.bool,
 };
 
 SingleImagePreview.Actions = Actions;

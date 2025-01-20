@@ -1,6 +1,7 @@
 import ColorPicker from './color-picker';
 import DocumentHelper from 'elementor-editor/document/helper-bc';
 import ContainerHelper from 'elementor-editor-utils/container-helper';
+import DOMPurify, { isValidAttribute } from 'dompurify';
 
 const allowedHTMLWrapperTags = [
 	'article',
@@ -48,12 +49,29 @@ module.exports = {
 				widget: null,
 				container: null,
 			},
+			'div-block': {
+				widget: null,
+				'div-block': null,
+			},
 		},
 	},
 
-	enqueueCSS( url, $document ) {
-		const selector = 'link[href="' + url + '"]',
-			link = '<link href="' + url + '" rel="stylesheet" type="text/css">';
+	/**
+	 * @param {string}                   url
+	 * @param {jQuery}                   $document
+	 * @param {{ crossOrigin: boolean }} options
+	 */
+	enqueueCSS( url, $document, options = {} ) {
+		const selector = 'link[href="' + url + '"]';
+		const link = document.createElement( 'link' );
+
+		link.href = url;
+		link.rel = 'stylesheet';
+		link.type = 'text/css';
+
+		if ( options.crossOrigin ) {
+			link.crossOrigin = 'anonymous';
+		}
 
 		if ( ! $document ) {
 			return;
@@ -124,14 +142,16 @@ module.exports = {
 
 		if ( iconSetting.enqueue ) {
 			iconSetting.enqueue.forEach( ( assetURL ) => {
-				this.enqueuePreviewStylesheet( assetURL );
-				this.enqueueEditorStylesheet( assetURL );
+				const versionAddedURL = `${ assetURL }${ iconSetting?.ver ? '?ver=' + iconSetting.ver : '' }`;
+				this.enqueuePreviewStylesheet( versionAddedURL );
+				this.enqueueEditorStylesheet( versionAddedURL );
 			} );
 		}
 
 		if ( iconSetting.url ) {
-			this.enqueuePreviewStylesheet( iconSetting.url );
-			this.enqueueEditorStylesheet( iconSetting.url );
+			const versionAddedURL = `${ iconSetting.url }${ iconSetting?.ver ? '?ver=' + iconSetting.ver : '' }`;
+			this.enqueuePreviewStylesheet( versionAddedURL );
+			this.enqueueEditorStylesheet( versionAddedURL );
 		}
 
 		this._enqueuedIconFonts.push( iconType );
@@ -153,8 +173,8 @@ module.exports = {
 	 * @param {*}      icon       - icon control data
 	 * @param {*}      attributes - default {} - attributes to attach to rendered html tag
 	 * @param {string} tag        - default i - html tag to render
-	 * @param {*}      returnType - default value - retrun type
-	 * @return {string|boolean|*} result
+	 * @param {*}      returnType - default value - return type
+	 * @return {string|undefined|*} result
 	 */
 	renderIcon( view, icon, attributes = {}, tag = 'i', returnType = 'value' ) {
 		if ( ! icon || ! icon.library ) {
@@ -183,7 +203,7 @@ module.exports = {
 			if ( 'panel' === returnType ) {
 				return '<' + tag + ' class="' + iconValue + '"></' + tag + '>';
 			}
-			const tagUniqueID = tag + this.getUniqueID();
+			const tagUniqueID = tag + elementorCommon.helpers.getUniqueId();
 			view.addRenderAttribute( tagUniqueID, attributes );
 			view.addRenderAttribute( tagUniqueID, 'class', iconValue );
 			const htmlTag = '<' + tag + ' ' + view.getRenderAttributeString( tagUniqueID ) + '></' + tag + '>';
@@ -251,6 +271,8 @@ module.exports = {
 				he_IL: 'hebrew',
 			};
 
+		const enqueueOptions = {};
+
 		let	fontUrl;
 
 		switch ( fontType ) {
@@ -261,11 +283,22 @@ module.exports = {
 					fontUrl += '&subset=' + subsets[ elementor.config.locale ];
 				}
 
+				enqueueOptions.crossOrigin = true;
+
+				if ( elementorCommon.config.experimentalFeatures?.e_local_google_fonts && 'preview' === target ) {
+					elementorCommon.ajax.addRequest( 'enqueue_google_fonts', {
+						data: { font_name: font },
+						unique_id: 'enqueue_google_fonts_' + font,
+					} );
+				}
+
 				break;
 
 			case 'earlyaccess': {
 				const fontLowerString = font.replace( /\s+/g, '' ).toLowerCase();
 				fontUrl = 'https://fonts.googleapis.com/earlyaccess/' + fontLowerString + '.css';
+
+				enqueueOptions.crossOrigin = true;
 				break;
 			}
 		}
@@ -275,7 +308,7 @@ module.exports = {
 				// TODO: Find better solution, temporary fix, covering issue: 'fonts does not rendered in global styles'.
 				this.enqueueCSS( fontUrl, elementorCommon.elements.$document );
 			} else {
-				this.enqueueCSS( fontUrl, elementor.$previewContents );
+				this.enqueueCSS( fontUrl, elementor.$previewContents, enqueueOptions );
 			}
 		}
 
@@ -679,5 +712,23 @@ module.exports = {
 
 		const frString = Array.from( { length: size }, () => '1fr' ).join( ' ' );
 		return frString;
+	},
+
+	sanitize( value, options ) {
+		return DOMPurify.sanitize( value, options );
+	},
+
+	sanitizeUrl( url ) {
+		const isValidUrl = !! url ? isValidAttribute( 'a', 'href', url ) : false;
+
+		if ( ! isValidUrl ) {
+			return '';
+		}
+
+		try {
+			return encodeURI( url );
+		} catch ( e ) {
+			return '';
+		}
 	},
 };

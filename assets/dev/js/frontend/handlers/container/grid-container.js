@@ -1,9 +1,31 @@
 export default class GridContainer extends elementorModules.frontend.handlers.Base {
+	__construct( settings ) {
+		super.__construct( settings );
+
+		this.onDeviceModeChange = this.onDeviceModeChange.bind( this );
+		this.updateEmptyViewHeight = this.updateEmptyViewHeight.bind( this );
+	}
+
 	isActive() {
 		return elementorFrontend.isEditMode();
 	}
 
 	getDefaultSettings() {
+		const gridItemSuffixes = [
+			'_heading_grid_item',
+			'_grid_column',
+			'_grid_column_custom',
+			'_grid_row',
+			'_grid_row_custom',
+			'heading_grid_item',
+			'grid_column',
+			'grid_column_custom',
+			'grid_row',
+			'grid_row_custom',
+		];
+
+		const gridItemControls = gridItemSuffixes.map( ( suffix ) => `[class*="elementor-control-${ suffix }"]` ).join( ', ' );
+
 		return {
 			selectors: {
 				gridOutline: '.e-grid-outline',
@@ -14,6 +36,7 @@ export default class GridContainer extends elementorModules.frontend.handlers.Ba
 			classes: {
 				outline: 'e-grid-outline',
 				outlineItem: 'e-grid-outline-item',
+				gridItemControls,
 			},
 		};
 	}
@@ -34,34 +57,89 @@ export default class GridContainer extends elementorModules.frontend.handlers.Ba
 		super.onInit();
 		this.initLayoutOverlay();
 		this.updateEmptyViewHeight();
+		elementor.hooks.addAction( 'panel/open_editor/container', this.onPanelShow );
+	}
+
+	handleGridControls( sectionName, editor ) {
+		const advancedSections = [
+			'_section_style', // Widgets
+			'section_layout', // Containers
+		];
+
+		if ( ! advancedSections.includes( sectionName ) ) {
+			return;
+		}
+
+		if ( ! this.isItemInGridCell( editor ) ) {
+			this.hideGridControls( editor );
+		}
+	}
+
+	isItemInGridCell( editor ) {
+		const container = editor?.getOption( 'editedElementView' )?.getContainer();
+
+		if ( 'function' !== typeof container?.parent?.model?.getSetting ) {
+			return false;
+		}
+
+		return 'grid' === container?.parent?.model?.getSetting( 'container_type' );
+	}
+
+	hideGridControls( editor ) {
+		const classes = this.getSettings( 'classes' );
+		const gridControls = editor?.el.querySelectorAll( classes.gridItemControls );
+
+		gridControls.forEach( ( element ) => {
+			element.style.display = 'none';
+		} );
+	}
+
+	onPanelShow( panel, model ) {
+		const settingsModel = model.get( 'settings' ),
+			containerType = settingsModel.get( 'container_type' ),
+			$linkElement = panel.$el.find( '#elementor-panel__editor__help__link' ),
+			href = 'grid' === containerType
+				? 'https://go.elementor.com/widget-container-grid'
+				: 'https://go.elementor.com/widget-container';
+
+		if ( $linkElement ) {
+			$linkElement.attr( 'href', href );
+		}
 	}
 
 	bindEvents() {
-		elementorFrontend.elements.$window.on( 'resize', this.onDeviceModeChange.bind( this ) );
-		elementorFrontend.elements.$window.on( 'resize', this.updateEmptyViewHeight.bind( this ) );
+		elementorFrontend.elements.$window.on( 'resize', this.onDeviceModeChange );
+		elementorFrontend.elements.$window.on( 'resize', this.updateEmptyViewHeight );
 		this.addChildLifeCycleEventListeners();
+		elementor.channels.editor.on( 'section:activated', this.handleGridControls.bind( this ) );
 	}
 
 	unbindEvents() {
 		this.removeChildLifeCycleEventListeners();
-		elementorFrontend.elements.$window.off( 'resize', this.onDeviceModeChange.bind( this ) );
-		elementorFrontend.elements.$window.off( 'resize', this.updateEmptyViewHeight.bind( this ) );
+		elementorFrontend.elements.$window.off( 'resize', this.onDeviceModeChange );
+		elementorFrontend.elements.$window.off( 'resize', this.updateEmptyViewHeight );
+		elementor.channels.editor.off( 'section:activated', this.handleGridControls.bind( this ) );
 	}
 
 	initLayoutOverlay() {
+		this.getCorrectContainer();
+		// Re-init empty view element after container layout change
+		const selectors = this.getSettings( 'selectors' ),
+			isGridContainer = 'grid' === this.getElementSettings( 'container_type' );
+
+		this.elements.emptyView = this.findElement( selectors.emptyView )[ 0 ];
+
+		if ( isGridContainer && this.elements?.emptyView ) {
+			this.elements.emptyView.style.display = this.shouldRemoveEmptyView() ? 'none' : 'block';
+		}
+
 		if ( ! this.shouldDrawOutline() ) {
 			return;
 		}
 
-		this.getCorrectContainer();
 		this.removeExistingOverlay();
 		this.createOverlayContainer();
 		this.createOverlayItems();
-
-		// Re-init empty view element after container layout change
-		const selectors = this.getSettings( 'selectors' );
-		this.elements.emptyView = this.findElement( selectors.emptyView )[ 0 ];
-		this.elements.emptyView.style.display = this.shouldRemoveEmptyView() ? 'none' : 'block';
 	}
 
 	shouldDrawOutline() {
@@ -206,7 +284,7 @@ export default class GridContainer extends elementorModules.frontend.handlers.Ba
 	 */
 	getResponsiveControlNames( propsThatTriggerGridLayoutRender ) {
 		const activeBreakpoints = elementorFrontend.breakpoints.getActiveBreakpointsList();
-		let responsiveControlNames = [];
+		const responsiveControlNames = [];
 
 		for ( const prop of propsThatTriggerGridLayoutRender ) {
 			for ( const breakpoint of activeBreakpoints ) {

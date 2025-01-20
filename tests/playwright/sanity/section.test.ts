@@ -1,32 +1,30 @@
-import { test, expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { parallelTest as test } from '../parallelTest';
 import WpAdminPage from '../pages/wp-admin-page';
+import ContextMenu from '../pages/widgets/context-menu';
 import widgets from '../enums/widgets';
 
 test.describe( 'Section tests', () => {
-	test.beforeAll( async ( { browser }, testInfo ) => {
+	test.beforeAll( async ( { browser, apiRequests }, testInfo ) => {
 		const context = await browser.newContext();
 		const page = await context.newPage();
-		const wpAdmin = new WpAdminPage( page, testInfo );
+		const wpAdmin = new WpAdminPage( page, testInfo, apiRequests );
 		await wpAdmin.setExperiments( {
 			container: false,
 		} );
+		await page.close();
 	} );
 
-	test.afterAll( async ( { browser }, testInfo ) => {
-		const context = await browser.newContext();
-		const page = await context.newPage();
-		new WpAdminPage( page, testInfo );
-	} );
-
-	test( 'Verify that elements are in the correct order after passing into a new section', async ( { page }, testInfo ) => {
+	test( 'Verify that elements are in the correct order after passing into a new section', async ( { page, apiRequests }, testInfo ) => {
 		// Arrange.
-		const wpAdmin = new WpAdminPage( page, testInfo );
-		const editor = await wpAdmin.useElementorCleanPost(),
+		const wpAdmin = new WpAdminPage( page, testInfo, apiRequests );
+		const contextMenu = new ContextMenu( page, testInfo );
+		const editor = await wpAdmin.openNewPage(),
 			sectionId1 = await editor.addElement( { elType: 'section' }, 'document' ),
 			sectionId2 = await editor.addElement( { elType: 'section' }, 'document' ),
-			section1Column = await editor.getPreviewFrame().locator( '.elementor-element-' + sectionId1 + ' .elementor-column' ),
+			section1Column = editor.getPreviewFrame().locator( '.elementor-element-' + sectionId1 + ' .elementor-column' ),
 			section1ColumnId = await section1Column.getAttribute( 'data-id' ),
-			section2Column = await editor.getPreviewFrame().locator( '.elementor-element-' + sectionId2 + ' .elementor-column' ),
+			section2Column = editor.getPreviewFrame().locator( '.elementor-element-' + sectionId2 + ' .elementor-column' ),
 			section2ColumnId = await section2Column.getAttribute( 'data-id' );
 
 		// Add widgets.
@@ -34,13 +32,13 @@ test.describe( 'Section tests', () => {
 		await editor.addWidget( widgets.heading, section2ColumnId );
 
 		// Copy section 1.
-		await editor.copyElement( sectionId1 );
+		await contextMenu.copyElement( sectionId1 );
 
 		// Open Add Section Inline element.
 		await editor.openAddElementSection( sectionId2 );
 
 		// Paste section 1 onto New section element.
-		await editor.pasteElement( '.elementor-add-section-inline' );
+		await contextMenu.pasteElement( '.elementor-add-section-inline' );
 
 		// Assert.
 		// Verify that the first section has a `data-id` value of `sectionId1`.

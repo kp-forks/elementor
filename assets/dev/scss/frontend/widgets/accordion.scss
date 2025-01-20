@@ -2,8 +2,14 @@
 // Accordion
 //
 
+.elementor-tab-title {
+	a {
+		color: inherit;
+	}
+}
+
 .elementor-accordion {
-	text-align: $start;
+	text-align: start;
 
 	.elementor-accordion-item {
 		border: 1px solid $gray-light;
